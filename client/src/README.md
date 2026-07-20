@@ -8,6 +8,13 @@ desktop-first with mouse emulating touch; mobile packaging is milestone M10.
 
 - `main.rs` — app wiring: default plugins, shared plugin, netcode client, rendering/input/UI
   plugins.
+- `app_state.rs` — the client's **own** top-level screen state machine, a Bevy `States` enum
+  distinct from the server's authoritative `match_state.rs`:
+  `MainMenu → Connecting → Lobby → Playing → Ended`. This exists because the client has
+  screens the server doesn't know about (`MainMenu`, `Connecting`) and needs to render UI
+  correctly before a connection exists at all. `ui/lobby.rs` and the rest of `ui/` read this
+  state to decide what to show; it transitions in response to netcode connection events and
+  replicated `MatchPhase` messages once connected.
 - `netcode.rs` — Lightyear client: connect over UDP with a netcode token, tick sync with the
   server's 30 Hz fixed timestep. Mobile OSes suspend sockets on background → app-resume is
   treated as a reconnect (token re-request path exists from day one).

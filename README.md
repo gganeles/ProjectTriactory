@@ -20,7 +20,7 @@ The repo will become a Cargo workspace with three members:
 |---|---|
 | [shared/](shared/) | The Lightyear protocol crate: grid math, components, messages/channels/inputs, static game data, and the deterministic simulation systems that run on **both** server and client (prediction/rollback). |
 | [server/](server/) | Headless authoritative app: netcode listener, match lifecycle, map generation, and every gameplay system that mutates state (occupation, combat, production, economy, vision). |
-| [client/](client/) | Player-facing app: rendering, touch/mouse input, UI, prediction/interpolation setup, and the client's memory of revealed terrain. |
+| [client/](client/) | Player-facing app: rendering, touch/mouse input, UI, prediction/interpolation setup, and the client's memory of revealed terrain. Owns [client/assets/](client/assets/) (textures, fonts, audio) — the server is headless and has none. |
 
 ## Core design rules
 
