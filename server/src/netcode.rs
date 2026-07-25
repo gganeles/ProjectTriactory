@@ -19,4 +19,5 @@ pub fn start_server(mut commands: Commands) {
         ))
         .id();
     commands.trigger(Start { entity: server });
+    info!("Listening on {DEV_SERVER_ADDR} (protocol id {PROTOCOL_ID})");
 }

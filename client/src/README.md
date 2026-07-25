@@ -1,30 +1,38 @@
 # `client/src` — player-facing app
 
-Rendering, input, UI, and prediction. Runs `DefaultPlugins` + `SharedPlugin` from
-`triactory_shared` + Lightyear client plugins. **Mobile-first** (iOS/Android), but developed
+Rendering, input, UI, and prediction. Runs `DefaultPlugins` + Lightyear's `ClientPlugins` +
+`SharedPlugin` from `triactory_shared`. **Mobile-first** (iOS/Android), but developed
 desktop-first with mouse emulating touch; mobile packaging is milestone M10.
+
+## Files
+
+- `main.rs` — app wiring: `DefaultPlugins`, `EguiPlugin`, `ClientPlugins`, then `SharedPlugin`
+  (which registers the Lightyear protocol — see `shared/src/protocol/mod.rs` for why that must
+  come after `ClientPlugins`), then the netcode-connect `Startup` system and the
+  rendering/input/UI/world-model plugins. `DefaultPlugins` already includes `StatesPlugin`
+  (unlike the server's `MinimalPlugins`), so no extra ordering care is needed there.
+- `netcode.rs` — connects to `triactory_shared::config::DEV_SERVER_ADDR` once at `Startup` with
+  a locally-generated netcode token (`Authentication::Manual`, matching the server's
+  `Key::default()`). No real player identity yet (client id is hardcoded to `0`), no tick-sync
+  tuning beyond Lightyear's defaults, and no reconnect-on-resume handling — all later work
+  (milestones M9/M10).
+- `world_model.rs` — the client's memory of the map: a `RevealedTiles` resource
+  (`HashMap<TriCoord, Terrain>`) fed by `TilesRevealed` messages. There's no fog yet, so this
+  just accumulates whatever the server has sent (currently the whole map, once); this is where
+  fog-surviving terrain memory and local A* pathfinding will read from once those exist.
 
 ## Planned top-level files
 
-- `main.rs` — app wiring: default plugins, shared plugin, netcode client, rendering/input/UI
-  plugins.
 - `app_state.rs` — the client's **own** top-level screen state machine, a Bevy `States` enum
   distinct from the server's authoritative `match_state.rs`:
-  `MainMenu → Connecting → Lobby → Playing → Ended`. This exists because the client has
-  screens the server doesn't know about (`MainMenu`, `Connecting`) and needs to render UI
-  correctly before a connection exists at all. `ui/lobby.rs` and the rest of `ui/` read this
-  state to decide what to show; it transitions in response to netcode connection events and
-  replicated `MatchPhase` messages once connected.
-- `netcode.rs` — Lightyear client: connect over UDP with a netcode token, tick sync with the
-  server's 30 Hz fixed timestep. Mobile OSes suspend sockets on background → app-resume is
-  treated as a reconnect (token re-request path exists from day one).
+  `MainMenu → Connecting → Lobby → Playing → Ended`. Not implemented yet — the client currently
+  reuses the *shared* `AppState { MainMenu, Game }` from `shared/src/states.rs` directly, so
+  there's no client-only `Connecting`/`Lobby`/`Ended` screen yet, and `AppState::Game` doesn't
+  actually wait for the netcode connection to succeed before showing the map.
 - `prediction.rs` — handling of Predicted/Interpolated entity spawns: the player's own hero is
   **Predicted** (client runs `shared::systems::movement` locally and rolls back on server
   correction); all other heroes are **Interpolated**; everything else is plainly replicated.
   Also frame interpolation for visually smoothing the predicted hero between fixed ticks.
-- `world_model.rs` — the client's memory of the map: a `RevealedTiles` resource
-  (`HashMap<TriCoord, Terrain>`) fed by `TilesRevealed` messages. Terrain memory survives fog
-  (explored-but-not-visible tiles stay known); this is also what local A* pathfinding runs on.
 
 ## Subfolders
 

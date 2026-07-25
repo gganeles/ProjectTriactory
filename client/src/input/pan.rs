@@ -27,7 +27,11 @@ impl Plugin for PanPlugin {
             Update,
             pan_camera_on_drag
                 .run_if(in_state(AppState::Game))
-                .run_if(in_state(GameMode::BuildMode)),
+                .run_if(in_state(GameMode::BuildMode))
+                // The map now spawns once the server's TilesRevealed message arrives rather than
+                // synchronously on entering `AppState::Game`, so there's a window where the state
+                // is right but `MapBounds` (inserted alongside the map) doesn't exist yet.
+                .run_if(resource_exists::<MapBounds>),
         );
     }
 }

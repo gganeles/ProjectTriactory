@@ -22,11 +22,11 @@ pub fn send_map_on_connect(
         return;
     };
 
+    let tile_count = map.tiles.len();
     let tiles = map.tiles.iter().map(|(coord, terrain)| (*coord, *terrain)).collect();
     let message = TilesRevealed(tiles);
-    if let Err(err) =
-        sender.send::<_, MapChannel>(&message, &server, &NetworkTarget::Single(client_id.0))
-    {
-        error!("Failed to send TilesRevealed to newly-connected client: {err:?}");
+    match sender.send::<_, MapChannel>(&message, &server, &NetworkTarget::Single(client_id.0)) {
+        Ok(()) => info!("Sent {tile_count} tiles to newly-connected client {:?}", client_id.0),
+        Err(err) => error!("Failed to send TilesRevealed to newly-connected client: {err:?}"),
     }
 }

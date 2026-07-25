@@ -3,6 +3,7 @@ mod netcode;
 mod replication;
 
 use bevy::prelude::*;
+use bevy::state::app::StatesPlugin;
 use core::time::Duration;
 use lightyear::prelude::server::ServerPlugins;
 use triactory_shared::config::TICK_RATE_HZ;
@@ -17,6 +18,13 @@ fn start_match(mut next_state: ResMut<NextState<AppState>>) {
 fn main() {
     App::new()
         .add_plugins(MinimalPlugins)
+        // MinimalPlugins doesn't include logging (unlike the client's DefaultPlugins) — without
+        // this, a headless server would run with no visibility at all, `RUST_LOG` included.
+        .add_plugins(bevy::log::LogPlugin::default())
+        // Lightyear's ServerPlugins registers its own internal Bevy `States` type and expects
+        // `StatesPlugin` to already exist — `MinimalPlugins` doesn't include it (unlike the
+        // client's `DefaultPlugins`), so it has to go first here.
+        .add_plugins(StatesPlugin)
         .add_plugins(ServerPlugins {
             tick_duration: Duration::from_secs_f64(1.0 / TICK_RATE_HZ),
         })
