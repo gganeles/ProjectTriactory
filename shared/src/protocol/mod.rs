@@ -13,17 +13,18 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::components::tile::Terrain;
+use crate::components::tile::TileData;
 use crate::grid::TriCoord;
 
 /// Reliable ordered channel carrying map/terrain traffic.
 pub struct MapChannel;
 
-/// Server → client: tiles and their terrain. There's no fog of war yet, so today this is
-/// always the whole map sent once on connect, not a fog-driven reveal batch — the name matches
-/// the planned message in `shared/src/protocol/README.md` since it'll grow into that later.
+/// Server → client: tiles and their terrain/biome data. There's no fog of war yet, so today
+/// this is always the whole map sent once on connect, not a fog-driven reveal batch — the name
+/// matches the planned message in `shared/src/protocol/README.md` since it'll grow into that
+/// later.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct TilesRevealed(pub Vec<(TriCoord, Terrain)>);
+pub struct TilesRevealed(pub Vec<(TriCoord, TileData)>);
 
 pub struct ProtocolPlugin;
 

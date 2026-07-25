@@ -4,7 +4,7 @@ use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// Default hexagon edge length (triangles per side) used until a real lobby lets players
 /// choose a map size.
-pub const DEFAULT_EDGE_TILES: i32 = 15;
+pub const DEFAULT_EDGE_TILES: i32 = 31;
 
 /// Fixed-timestep simulation rate shared by both apps (see the root README's locked decisions).
 pub const TICK_RATE_HZ: f64 = 30.0;

@@ -8,7 +8,7 @@ before any `Client`/`Server` entity is spawned — both apps' `main.rs` enforce 
 ## Files
 
 - `mod.rs` — `ProtocolPlugin`, currently registering just the map: `MapChannel` (reliable
-  ordered) and the `TilesRevealed(Vec<(TriCoord, Terrain)>)` message, server→client only. There's
+  ordered) and the `TilesRevealed(Vec<(TriCoord, TileData)>)` message, server→client only. There's
   no fog of war yet, so today it's always the whole map sent once right after connecting (see
   `server/src/replication.rs`), not a fog-driven reveal batch — it has the same name as the
   message planned below since it'll grow into that. Everything else planned for this file

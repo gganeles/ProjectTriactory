@@ -1,31 +1,32 @@
 //! Seeded map generation, run once per match during the **Starting** phase.
 //!
-//! Currently covers the hexagonal shape of the map (`hexagon_tiles`, which now lives in
-//! `shared/src/grid/hexagon.rs` since the client's local map preview needs it too). Terrain
-//! flavor and biome placement are separate follow-up steps (`terrain.rs`, `biomes.rs` — see
-//! this folder's `README.md`) that will fill in the `Terrain` this module currently defaults to
-//! `Field`.
+//! Covers the hexagonal shape of the map (`hexagon_tiles`, which lives in
+//! `shared/src/grid/hexagon.rs` since the client's local map preview needs it too) and, via
+//! `terrain.rs`, the elevation/moisture-noise `Terrain`/`TerrainType` for every tile. Biome
+//! (territory) placement is a separate follow-up step (`biomes.rs` — see this folder's
+//! `README.md`).
+
+mod terrain;
 
 use bevy::prelude::{Commands, Res, Resource};
 use std::collections::HashMap;
-use triactory_shared::components::tile::Terrain;
+use triactory_shared::components::tile::TileData;
 use triactory_shared::grid::{HexMapError, TriCoord, hexagon_tiles};
 
 /// The server's authoritative terrain lookup. Tiles are not entities; clients learn terrain
 /// through `TilesRevealed` messages as fog lifts (see `shared/src/protocol`).
 #[derive(Resource, Debug, Default)]
 pub struct TileMap {
-    pub tiles: HashMap<TriCoord, Terrain>,
+    pub tiles: HashMap<TriCoord, TileData>,
 }
 
 impl TileMap {
-    /// Generates a hexagonal map whose edge row has `edge_tiles` triangles, with every tile
-    /// defaulted to `Terrain::Field` pending real terrain generation.
-    pub fn generate_hexagon(edge_tiles: i32) -> Result<Self, HexMapError> {
-        let tiles = hexagon_tiles(edge_tiles)?
-            .into_iter()
-            .map(|coord| (coord, Terrain::default()))
-            .collect();
+    /// Generates a hexagonal map whose edge row has `edge_tiles` triangles, with terrain and
+    /// biome coloring derived from elevation/moisture noise seeded by `seed`. Deterministic:
+    /// the same `edge_tiles`/`seed` always produces the same map.
+    pub fn generate_hexagon(edge_tiles: i32, seed: u32) -> Result<Self, HexMapError> {
+        let coords = hexagon_tiles(edge_tiles)?;
+        let tiles = terrain::generate(&coords, seed);
         Ok(Self { tiles })
     }
 }
@@ -35,12 +36,14 @@ impl TileMap {
 #[derive(Resource, Debug, Clone, Copy)]
 pub struct MapGenConfig {
     pub edge_tiles: i32,
+    pub seed: u32,
 }
 
 impl Default for MapGenConfig {
     fn default() -> Self {
         Self {
             edge_tiles: triactory_shared::config::DEFAULT_EDGE_TILES,
+            seed: 0,
         }
     }
 }
@@ -48,7 +51,7 @@ impl Default for MapGenConfig {
 /// Run on [`triactory_shared::AppState::Game`] entry: builds the hexagonal [`TileMap`] and
 /// inserts it as a resource.
 pub fn generate_map_on_enter(mut commands: Commands, config: Res<MapGenConfig>) {
-    let map = TileMap::generate_hexagon(config.edge_tiles)
+    let map = TileMap::generate_hexagon(config.edge_tiles, config.seed)
         .expect("MapGenConfig::edge_tiles must be odd and >= 3");
     commands.insert_resource(map);
 }
@@ -62,9 +65,15 @@ mod tests {
 
     #[test]
     fn generate_hexagon_populates_every_tile() {
-        let map = TileMap::generate_hexagon(15).unwrap();
+        let map = TileMap::generate_hexagon(15, 0).unwrap();
         assert_eq!(map.tiles.len(), 294);
-        assert!(map.tiles.values().all(|t| *t == Terrain::Field));
+    }
+
+    #[test]
+    fn generate_hexagon_is_deterministic_for_a_given_seed() {
+        let a = TileMap::generate_hexagon(15, 3).unwrap();
+        let b = TileMap::generate_hexagon(15, 3).unwrap();
+        assert_eq!(a.tiles, b.tiles);
     }
 
     #[test]
@@ -90,6 +99,7 @@ mod tests {
             .world()
             .get_resource::<TileMap>()
             .expect("map should be generated on entering Game");
-        assert_eq!(map.tiles.len(), 294);
+        let m = (triactory_shared::config::DEFAULT_EDGE_TILES - 1) / 2;
+        assert_eq!(map.tiles.len() as i32, 6 * m * m);
     }
 }

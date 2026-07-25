@@ -7,8 +7,10 @@
 //! top-down 2D camera + chunked meshes planned in this folder's `README.md` for the eventual fog-
 //! aware, dirty-chunk-rebuilding version.
 
+use std::collections::HashMap;
+
 use bevy::prelude::*;
-use triactory_shared::{AppState, grid::TriCoord};
+use triactory_shared::{AppState, components::terrain_type::TerrainType, grid::TriCoord};
 
 use super::camera::MainCamera;
 use crate::world_model::RevealedTiles;
@@ -58,8 +60,8 @@ fn spawn_hex_map_when_ready(
     }
     let tiles: Vec<TriCoord> = revealed.tiles.keys().copied().collect();
 
-    let up_material = materials.add(StandardMaterial::from(Color::srgb(0.40, 0.62, 0.36)));
-    let down_material = materials.add(StandardMaterial::from(Color::srgb(0.28, 0.46, 0.26)));
+    // One material per biome, built lazily so unused `TerrainType`s never allocate a handle.
+    let mut biome_materials: HashMap<TerrainType, Handle<StandardMaterial>> = HashMap::new();
 
     let mut max_dist = 0.0f32;
     for tile in &tiles {
@@ -77,11 +79,11 @@ fn spawn_hex_map_when_ready(
                 // Reversed order: a 2D-plane CCW winding becomes CW (facing down) once lifted
                 // into the Y-up 3D world, so this flips it back to face up.
                 let triangle = Triangle3d::new(to_world_3d(c), to_world_3d(b), to_world_3d(a));
-                let material = if tile.is_upward() {
-                    up_material.clone()
-                } else {
-                    down_material.clone()
-                };
+                let terrain_type = revealed.tiles[tile].terrain_type;
+                let material = biome_materials
+                    .entry(terrain_type)
+                    .or_insert_with(|| materials.add(StandardMaterial::from(terrain_type.color())))
+                    .clone();
                 parent.spawn((
                     Mesh3d(meshes.add(triangle.mesh().build())),
                     MeshMaterial3d(material),

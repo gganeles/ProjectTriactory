@@ -9,13 +9,15 @@ Everything drawn to the screen except UI widgets. 2D orthographic, budgeted for 
   Scenes reposition it rather than spawning their own — a second camera would need explicit
   `order`/clear-color setup to layer correctly with the egui UI pass.
 - `hex_map.rs` — **temporary prototype**, not the planned `grid_mesh.rs` system below: on
-  `AppState::Game` entry, calls `shared::grid::hexagon_tiles` directly (no netcode yet) and
-  spawns one `Triangle3d` mesh entity per tile (two `StandardMaterial`s, alternating by
-  orientation), then reframes the persistent camera as an angled orthographic "2.5D" view sized
-  to fit. Also inserts the `MapBounds` resource (the map's radius from the origin), which
-  `input::pan` and `input::zoom` read to keep the camera from drifting/zooming arbitrarily far
-  from the board; removed again on `AppState::Game` exit. Will be replaced by the real,
-  replicated, chunked-mesh pipeline below.
+  `AppState::Game` entry, reads the replicated `world_model::RevealedTiles` and spawns one
+  `Triangle3d` mesh entity per tile, colored by `TerrainType::color()` (one `StandardMaterial`
+  per distinct biome present, cached in a `HashMap` so repeats reuse the same handle), then
+  reframes the persistent camera as an angled orthographic "2.5D" view sized to fit. Also inserts
+  the `MapBounds` resource (the map's radius from the origin), which `input::pan` and
+  `input::zoom` read to keep the camera from drifting/zooming arbitrarily far from the board;
+  removed again on `AppState::Game` exit. Will be replaced by the real, chunked-mesh pipeline
+  below (the per-biome coloring here is the interim substitute for the `terrain.rs` texture atlas
+  planned there).
 
 ## Planned files
 

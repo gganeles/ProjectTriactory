@@ -6,11 +6,20 @@ reused by a future map-preview tool.
 
 ## Files
 
-- `mod.rs` — `TileMap` resource (`HashMap<TriCoord, Terrain>`), `MapGenConfig` (currently just
-  `edge_tiles`, defaulting to `shared::config::DEFAULT_EDGE_TILES`), and
-  `TileMap::generate_hexagon(edge_tiles)` / `generate_map_on_enter` (runs on
-  `AppState::Game` entry), which lay out the hexagon shape and default every tile to
-  `Terrain::Field` pending real terrain generation.
+- `mod.rs` — `TileMap` resource (`HashMap<TriCoord, TileData>`), `MapGenConfig` (`edge_tiles`,
+  defaulting to `shared::config::DEFAULT_EDGE_TILES`, and `seed`), and
+  `TileMap::generate_hexagon(edge_tiles, seed)` / `generate_map_on_enter` (runs on
+  `AppState::Game` entry), which lay out the hexagon shape and delegate terrain generation to
+  `terrain.rs`.
+- `terrain.rs` — elevation + moisture noise (`noise::Fbm<Perlin>`, seeded, deterministic) over
+  the triangle grid, with a radial falloff subtracted from elevation so the map forms a single
+  island rather than tiling forever. Each tile's elevation/moisture sample is classified into
+  both the gameplay-authoritative `Terrain` (`{ Field, Mountain, Water, Empty }`, via
+  `SEA_LEVEL`/`MOUNTAIN_LEVEL` thresholds) and the cosmetic `TerrainType`
+  (`shared/src/components/terrain_type.rs` — the elevation/moisture biome table from Amit
+  Patel's polygon map generation article), bundled together as `TileData`. `Terrain::Empty` is
+  not produced by this table — it's reserved for the neutral wilderness gaps `biomes.rs` (below)
+  will carve out.
 
 The hexagonal map *shape* itself (`hexagon_tiles(edge_tiles) -> Vec<TriCoord>`) now lives in
 [`shared/src/grid/hexagon.rs`](../../../shared/src/grid/hexagon.rs) rather than here — it's pure
@@ -19,9 +28,6 @@ exists, so it moved to the crate both apps share.
 
 ## Planned files
 
-- `terrain.rs` — terrain noise over the triangle grid, plus per-biome environment flavor
-  (mechanics §1.9: a biome can be mountain-heavy, field-heavy, empty, etc.). Assigns each
-  tile a `Terrain` from `{ Field, Mountain, Water, Empty }`.
 - `biomes.rs` — biome layout and spawning:
   1. Place Biome Tower anchors on a triangular super-lattice with spacing ≥ 6 lane units
      (guarantees max-level territories cannot overlap). All BTs are **upward** triangles,

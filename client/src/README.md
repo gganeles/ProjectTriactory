@@ -17,7 +17,7 @@ desktop-first with mouse emulating touch; mobile packaging is milestone M10.
   tuning beyond Lightyear's defaults, and no reconnect-on-resume handling — all later work
   (milestones M9/M10).
 - `world_model.rs` — the client's memory of the map: a `RevealedTiles` resource
-  (`HashMap<TriCoord, Terrain>`) fed by `TilesRevealed` messages. There's no fog yet, so this
+  (`HashMap<TriCoord, TileData>`) fed by `TilesRevealed` messages. There's no fog yet, so this
   just accumulates whatever the server has sent (currently the whole map, once); this is where
   fog-surviving terrain memory and local A* pathfinding will read from once those exist.
 
