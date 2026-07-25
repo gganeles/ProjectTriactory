@@ -2,6 +2,21 @@
 
 Everything drawn to the screen except UI widgets. 2D orthographic, budgeted for mobile GPUs.
 
+## Files
+
+- `camera.rs` — spawns the app's one persistent camera at `Startup` (`bevy_egui` binds its UI
+  context to the first camera the app creates, so this must exist before any scene needs one).
+  Scenes reposition it rather than spawning their own — a second camera would need explicit
+  `order`/clear-color setup to layer correctly with the egui UI pass.
+- `hex_map.rs` — **temporary prototype**, not the planned `grid_mesh.rs` system below: on
+  `AppState::Game` entry, calls `shared::grid::hexagon_tiles` directly (no netcode yet) and
+  spawns one `Triangle3d` mesh entity per tile (two `StandardMaterial`s, alternating by
+  orientation), then reframes the persistent camera as an angled orthographic "2.5D" view sized
+  to fit. Also inserts the `MapBounds` resource (the map's radius from the origin), which
+  `input::pan` and `input::zoom` read to keep the camera from drifting/zooming arbitrarily far
+  from the board; removed again on `AppState::Game` exit. Will be replaced by the real,
+  replicated, chunked-mesh pipeline below.
+
 ## Planned files
 
 - `grid_mesh.rs` — the triangle grid as **chunked meshes** (~16×16-triangle chunks). Only
@@ -18,8 +33,10 @@ Everything drawn to the screen except UI widgets. 2D orthographic, budgeted for 
   The server enforces this via interest management; fog rendering is presentation only.
 - `entities.rs` — sprites for heroes, Biome Archers, NRPs/ARPs and the Biome Tower; line
   rendering for `ResourceLink` connections (and the rubber-band preview during a drag).
-- `camera.rs` — 2D orthographic camera with pan (drag on empty space) and zoom (pinch /
-  scroll), clamped to the map bounds.
+
+Pan (drag on empty space) and zoom (pinch/scroll), clamped to the map bounds, are already
+implemented — see `input/pan.rs` and `input/zoom.rs` — rather than living in this folder's
+`camera.rs`, which only spawns/positions the camera.
 
 ## Design rules
 

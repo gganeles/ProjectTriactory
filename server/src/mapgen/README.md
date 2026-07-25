@@ -4,10 +4,21 @@ Runs once per match during the **Starting** phase. Deterministic from a seed (re
 testable generation). Pure library functions where possible so they can be unit-tested and
 reused by a future map-preview tool.
 
+## Files
+
+- `mod.rs` — `TileMap` resource (`HashMap<TriCoord, Terrain>`), `MapGenConfig` (currently just
+  `edge_tiles`, defaulting to `shared::config::DEFAULT_EDGE_TILES`), and
+  `TileMap::generate_hexagon(edge_tiles)` / `generate_map_on_enter` (runs on
+  `AppState::Game` entry), which lay out the hexagon shape and default every tile to
+  `Terrain::Field` pending real terrain generation.
+
+The hexagonal map *shape* itself (`hexagon_tiles(edge_tiles) -> Vec<TriCoord>`) now lives in
+[`shared/src/grid/hexagon.rs`](../../../shared/src/grid/hexagon.rs) rather than here — it's pure
+and seedless, and the client needs the same shape for its local map preview before real netcode
+exists, so it moved to the crate both apps share.
+
 ## Planned files
 
-- `mod.rs` — orchestration: seed → terrain → biome placement → entity spawning, filling the
-  server's `TileMap` resource and spawning biome entities.
 - `terrain.rs` — terrain noise over the triangle grid, plus per-biome environment flavor
   (mechanics §1.9: a biome can be mountain-heavy, field-heavy, empty, etc.). Assigns each
   tile a `Terrain` from `{ Field, Mountain, Water, Empty }`.

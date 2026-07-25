@@ -4,6 +4,19 @@ Bevy UI widgets and screens. Reads replicated state; issues command messages; re
 (success arrives as replicated component changes, failure as `CommandRejected { reason }`
 toasts).
 
+Built with [`bevy_egui`](https://github.com/vladbat00/bevy_egui) (immediate-mode, touch-capable —
+confirmed compatible with mobile via its `TouchInput` handling), not `bevy_lunex`: `bevy_lunex`
+is pinned to Bevy 0.18 even on its dev branch, and this project is locked to Bevy 0.19
+(`lightyear 0.28` requires it), so it can't be wired into this app's `App` at all — Cargo will
+happily build it as a second, incompatible copy of every Bevy crate, but its `Plugin`/`Component`
+types are then simply not the same types as this app's.
+
+## Files
+
+- `main_menu.rs` — the `AppState::MainMenu` screen: a "Start" button that calls
+  `NextState<AppState>::set(Game)`. Deliberately minimal; the richer client-only screen state
+  machine described below (`Connecting`, `Lobby`, etc.) isn't built yet.
+
 ## Planned files
 
 - `hud.rs` — persistent overlay: money (`PlayerBank`), resource counts (`PlayerResources`),

@@ -9,7 +9,8 @@ by both apps); their replication/prediction modes are registered separately in
 - `player.rs` — `Hero` (marker), `TribeId`, `TribeLeader`, `HeroTile` (current `TriCoord`),
   `HeroKinematics` (progress along the current edge crossing — the predicted movement state),
   `PlayerBank` (money), `PlayerResources` (normal + advanced stockpiles).
-- `tile.rs` — `Terrain` enum `{ Field, Mountain, Water, Empty }`, `TilePos`. Note: tiles are
+- `tile.rs` — `Terrain` enum `{ Field, Mountain, Water, Empty }` (done; `TilePos` still planned
+  if a placement wrapper type turns out to be needed beyond `TriCoord` itself). Note: tiles are
   **not** entities — `Terrain` is used inside the server's `TileMap` resource and the client's
   `RevealedTiles` resource, plus placement/boost lookups.
 - `biome.rs` — `Biome` (marker + claimed tile set), `BiomeTower` (the BT tile),
