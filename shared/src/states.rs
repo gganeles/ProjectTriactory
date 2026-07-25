@@ -2,7 +2,7 @@
 //!
 //! The client shows menu UI while in [`AppState::MainMenu`] and the match UI in
 //! [`AppState::Game`]. On the server, entering [`AppState::Game`] is what triggers map
-//! generation (see `server/src/map`). More granular in-match phases (lobby, starting,
+//! generation (see `server/src/game/map`). More granular in-match phases (lobby, starting,
 //! playing, ended) are a separate, later concern — see `server/src/README.md`'s planned
 //! `match_state.rs`.
 

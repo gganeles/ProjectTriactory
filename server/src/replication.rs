@@ -9,7 +9,7 @@ use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use triactory_shared::protocol::{MapChannel, TilesRevealed};
 
-use crate::map::TileMap;
+use crate::game::map::TileMap;
 
 pub fn send_map_on_connect(
     trigger: On<Add, Connected>,

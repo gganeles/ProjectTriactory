@@ -1,4 +1,4 @@
-# `server/src/map` — seeded map generation
+# `server/src/game/map` — seeded map generation
 
 Runs once per match during the **Starting** phase. Deterministic from a seed (replayable maps,
 testable generation). Pure library functions where possible so they can be unit-tested and

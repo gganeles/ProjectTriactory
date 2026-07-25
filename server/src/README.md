@@ -44,7 +44,7 @@ in memory and dies with the process; a future matchmaker just spawns processes.
 
 ## Subfolders
 
-- [map/](map/) — seeded map generation at match start.
+- [game/map/](game/map/) — seeded map generation at match start.
 - [systems/](systems/) — all authoritative gameplay systems.
 
 ## Design rules

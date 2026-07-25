@@ -1,4 +1,4 @@
-mod map;
+mod game;
 mod netcode;
 mod replication;
 
@@ -31,9 +31,9 @@ fn main() {
         // The protocol must be added after ServerPlugins but before any Server entity is
         // spawned (see shared/src/protocol/mod.rs) — SharedPlugin does both here.
         .add_plugins(SharedPlugin)
-        .init_resource::<map::MapGenConfig>()
+        .init_resource::<game::map::MapGenConfig>()
         .add_systems(Startup, (start_match, netcode::start_server))
-        .add_systems(OnEnter(AppState::Game), map::generate_map_on_enter)
+        .add_systems(OnEnter(AppState::Game), game::map::generate_map_on_enter)
         .add_observer(replication::send_map_on_connect)
         .run();
 }
