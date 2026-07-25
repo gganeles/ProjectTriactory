@@ -6,9 +6,10 @@
 //! `a + b + c` is 1 for an upward-pointing triangle or 2 for a downward-pointing one.
 
 use bevy::math::Vec2;
+use serde::{Deserialize, Serialize};
 
 /// A single triangular tile's grid coordinate. `a + b + c` is always 1 (upward) or 2 (downward).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct TriCoord {
     pub a: i32,
     pub b: i32,

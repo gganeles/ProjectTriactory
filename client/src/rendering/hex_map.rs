@@ -1,22 +1,27 @@
-//! Local preview of the hexagonal triangle map, shown while [`AppState::Game`] is active.
+//! Renders the map replicated from the server, shown while [`AppState::Game`] is active.
 //!
-//! There's no netcode yet, so this generates the same [`hexagon_tiles`] shape the server will
-//! authoritatively build, purely for a visual check that the map generation looks right. It
-//! renders as a flat mosaic of triangles viewed through an angled orthographic camera — a "2.5D"
-//! look — rather than the top-down 2D camera + chunked meshes planned in this folder's
-//! `README.md` for the real, replicated map.
+//! Spawns once `world_model::RevealedTiles` has data (the server sends the whole map as one
+//! message right after connecting — see `server/src/replication.rs` — so there's a frame or two
+//! where `AppState::Game` is active but nothing has arrived yet). Renders as a flat mosaic of
+//! triangles viewed through an angled orthographic camera — a "2.5D" look — rather than the
+//! top-down 2D camera + chunked meshes planned in this folder's `README.md` for the eventual fog-
+//! aware, dirty-chunk-rebuilding version.
 
 use bevy::prelude::*;
-use triactory_shared::{AppState, config::DEFAULT_EDGE_TILES, grid::hexagon_tiles};
+use triactory_shared::{AppState, grid::TriCoord};
 
 use super::camera::MainCamera;
+use crate::world_model::RevealedTiles;
 
 pub struct HexMapPlugin;
 
 impl Plugin for HexMapPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Game), spawn_hex_map)
-            .add_systems(OnExit(AppState::Game), despawn_hex_map);
+        app.add_systems(
+            Update,
+            spawn_hex_map_when_ready.run_if(in_state(AppState::Game)),
+        )
+        .add_systems(OnExit(AppState::Game), despawn_hex_map);
     }
 }
 
@@ -40,14 +45,18 @@ pub struct MapBounds {
 
 const EDGE_LEN: f32 = 1.0;
 
-fn spawn_hex_map(
+fn spawn_hex_map_when_ready(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    revealed: Res<RevealedTiles>,
+    existing: Query<(), With<HexMapScene>>,
     mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
 ) {
-    let tiles =
-        hexagon_tiles(DEFAULT_EDGE_TILES).expect("DEFAULT_EDGE_TILES must be a valid hexagon size");
+    if !existing.is_empty() || revealed.tiles.is_empty() {
+        return;
+    }
+    let tiles: Vec<TriCoord> = revealed.tiles.keys().copied().collect();
 
     let up_material = materials.add(StandardMaterial::from(Color::srgb(0.40, 0.62, 0.36)));
     let down_material = materials.add(StandardMaterial::from(Color::srgb(0.28, 0.46, 0.26)));
