@@ -14,11 +14,14 @@ before any `Client`/`Server` entity is spawned — both apps' `main.rs` enforce 
   message planned below since it'll grow into that. Everything else planned for this file
   (replicated components, gameplay messages/channels, native inputs) will split out into
   `components.rs` / `messages.rs` / `channels.rs` / `inputs.rs` as those get implemented.
+  Also carries a DEBUG `RegenerateMap` client→server message (backs the debug "Back to menu"
+  button — see its doc comment in `mod.rs` for how to strip it), which is why `MapChannel` is
+  `Bidirectional` rather than `ServerToClient` for now.
 
 ## Planned files
 
 - `components.rs` — replication registration only (the structs themselves live in
-  [../components/](../components/)). Encodes the replication table:
+  [../game/](../game/)). Encodes the replication table:
 
   | Component | Replicated to | Client mode |
   |---|---|---|

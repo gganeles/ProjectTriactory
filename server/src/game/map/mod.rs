@@ -10,7 +10,7 @@ mod terrain;
 
 use bevy::prelude::{Commands, Res, Resource};
 use std::collections::HashMap;
-use triactory_shared::components::tile::TileData;
+use triactory_shared::game::map::terrain::TileData;
 use triactory_shared::grid::{HexMapError, TriCoord, hexagon_tiles};
 
 /// The server's authoritative terrain lookup. Tiles are not entities; clients learn terrain
@@ -43,9 +43,23 @@ impl Default for MapGenConfig {
     fn default() -> Self {
         Self {
             edge_tiles: triactory_shared::config::DEFAULT_EDGE_TILES,
-            seed: 0,
+            seed: random_seed(),
         }
     }
+}
+
+/// A different seed per process, so matches don't all generate the identical map. Not itself
+/// deterministic — that's the point; `TileMap::generate_hexagon`'s determinism is about a *given*
+/// seed always producing the same map, not about the default seed being fixed. A real lobby will
+/// eventually pick (and share with clients) the seed for a match instead of this per-process
+/// default. `pub(crate)` rather than private so `replication.rs`'s debug `regenerate_map_on_request`
+/// can reroll it too — see that function's docs.
+pub(crate) fn random_seed() -> u32 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after the Unix epoch")
+        .subsec_nanos()
 }
 
 /// Run on [`triactory_shared::AppState::Game`] entry: builds the hexagonal [`TileMap`] and

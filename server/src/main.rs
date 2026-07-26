@@ -34,6 +34,8 @@ fn main() {
         .init_resource::<game::map::MapGenConfig>()
         .add_systems(Startup, (start_match, netcode::start_server))
         .add_systems(OnEnter(AppState::Game), game::map::generate_map_on_enter)
+        // DEBUG, easy to remove — see server/src/replication.rs's regenerate_map_on_request docs.
+        .add_systems(Update, replication::regenerate_map_on_request)
         .add_observer(replication::send_map_on_connect)
         .run();
 }

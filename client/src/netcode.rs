@@ -2,11 +2,13 @@
 //! locally-generated netcode.io connect token (no auth service exists yet — see
 //! `server/src/netcode.rs`'s matching caveat).
 //!
-//! Connects once at `Startup`. Mobile OSes suspend sockets on background — treating app-resume
-//! as a reconnect is a later concern (milestone M10), not handled yet.
+//! Connects once at `Startup`, then [`reconnect_on_disconnect`] retries a fixed delay after any
+//! disconnect (e.g. the dev server restarting) — full reconnect semantics (backoff,
+//! app-resume-on-mobile) are milestone M10, this is just enough for local dev.
 
 use bevy::prelude::*;
 use core::net::{IpAddr, Ipv4Addr, SocketAddr};
+use core::time::Duration;
 use lightyear::netcode::Key;
 use lightyear::prelude::client::*;
 use lightyear::prelude::*;
@@ -19,6 +21,9 @@ const CLIENT_LOCAL_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPE
 /// No real player identity yet (no login/lobby), so every client claims id 0. Fine while only
 /// one client connects at a time during development; needs real per-player ids by milestone M9.
 const DEV_CLIENT_ID: u64 = 0;
+
+/// How long to wait after a disconnect before trying again.
+const RECONNECT_DELAY: Duration = Duration::from_secs(2);
 
 pub fn connect_to_server(mut commands: Commands) -> Result {
     let auth = Authentication::Manual {
@@ -39,5 +44,29 @@ pub fn connect_to_server(mut commands: Commands) -> Result {
         ))
         .id();
     commands.trigger(Connect { entity: client });
+    Ok(())
+}
+
+/// Despawns the (now-dead) client entity on disconnect and retries a fresh
+/// [`connect_to_server`] after [`RECONNECT_DELAY`] — covers the server restarting (e.g. during
+/// local dev) rather than leaving the client permanently given up.
+pub fn reconnect_on_disconnect(
+    mut commands: Commands,
+    disconnected: Query<Entity, (With<Client>, Added<Disconnected>)>,
+    mut pending: Local<Option<Timer>>,
+    time: Res<Time>,
+) -> Result {
+    for entity in &disconnected {
+        commands.entity(entity).despawn();
+        *pending = Some(Timer::new(RECONNECT_DELAY, TimerMode::Once));
+        info!("Lost connection to server; retrying in {RECONNECT_DELAY:?}");
+    }
+
+    if let Some(timer) = pending.as_mut()
+        && timer.tick(time.delta()).just_finished()
+    {
+        *pending = None;
+        connect_to_server(commands)?;
+    }
     Ok(())
 }

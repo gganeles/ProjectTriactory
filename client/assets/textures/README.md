@@ -2,7 +2,7 @@
 
 Source images for `client/src/rendering`:
 
-- Terrain tile textures (Field, Mountain, Water, Empty) — per `shared::components::tile::Terrain`.
+- Terrain tile textures (Field, Mountain, Water, Empty) — per `shared::game::map::terrain::Terrain`.
 - Per-owner biome texture variants / tint maps (mechanics §1.10: a biome's look adapts to its
   occupying player) — consumed by `rendering/terrain.rs`.
 - Entity sprites: hero, Biome Archer, Biome Tower, NRP, ARP.

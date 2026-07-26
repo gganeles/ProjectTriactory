@@ -1,9 +1,0 @@
-[package]
-name = "triactory_shared_v2"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-bevy = { workspace = true }
-lightyear = { workspace = true }
-serde = { version = "1", features = ["derive"] }

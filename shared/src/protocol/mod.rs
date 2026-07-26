@@ -13,7 +13,7 @@ use bevy::prelude::*;
 use lightyear::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::components::tile::TileData;
+use crate::game::map::terrain::TileData;
 use crate::grid::TriCoord;
 
 /// Reliable ordered channel carrying map/terrain traffic.
@@ -26,6 +26,14 @@ pub struct MapChannel;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TilesRevealed(pub Vec<(TriCoord, TileData)>);
 
+/// DEBUG, easy to remove: client → server, "reroll the map with a new random seed and send it
+/// back to me." Backs the debug "Back to menu" button (`client/src/ui/debug_back_button.rs`) —
+/// remove this message, `MapChannel`'s direction below (revert to `ServerToClient`), and
+/// `server/src/replication.rs`'s `regenerate_map_on_request` together to fully strip the
+/// feature.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct RegenerateMap;
+
 pub struct ProtocolPlugin;
 
 impl Plugin for ProtocolPlugin {
@@ -34,9 +42,14 @@ impl Plugin for ProtocolPlugin {
             mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
             ..default()
         })
-        .add_direction(NetworkDirection::ServerToClient);
+        // Bidirectional (rather than ServerToClient) only because of the debug `RegenerateMap`
+        // request below — see its docs.
+        .add_direction(NetworkDirection::Bidirectional);
 
         app.register_message::<TilesRevealed>()
             .add_direction(NetworkDirection::ServerToClient);
+
+        app.register_message::<RegenerateMap>()
+            .add_direction(NetworkDirection::ClientToServer);
     }
 }

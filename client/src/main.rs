@@ -25,9 +25,12 @@ fn main() {
             Startup,
             (rendering::camera::spawn_main_camera, netcode::connect_to_server),
         )
+        .add_systems(Update, netcode::reconnect_on_disconnect)
         .add_plugins(world_model::WorldModelPlugin)
         .add_plugins(ui::main_menu::MainMenuPlugin)
         .add_plugins(ui::mode_toggle::ModeTogglePlugin)
+        // DEBUG, easy to remove — see client/src/ui/debug_back_button.rs's module docs.
+        .add_plugins(ui::debug_back_button::DebugBackButtonPlugin)
         .add_plugins(rendering::hex_map::HexMapPlugin)
         .add_plugins(input::pan::PanPlugin)
         .add_plugins(input::zoom::ZoomPlugin)

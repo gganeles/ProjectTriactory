@@ -7,7 +7,7 @@
 use bevy::prelude::*;
 use lightyear::prelude::*;
 use std::collections::HashMap;
-use triactory_shared::components::tile::TileData;
+use triactory_shared::game::map::terrain::TileData;
 use triactory_shared::grid::TriCoord;
 use triactory_shared::protocol::TilesRevealed;
 

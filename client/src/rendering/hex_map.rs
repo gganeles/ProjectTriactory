@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use triactory_shared::{AppState, components::terrain_type::TerrainType, grid::TriCoord};
+use triactory_shared::{AppState, game::map::terrain::TerrainType, grid::TriCoord};
 
 use super::camera::MainCamera;
 use crate::world_model::RevealedTiles;

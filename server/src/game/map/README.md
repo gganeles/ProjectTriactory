@@ -16,7 +16,7 @@ reused by a future map-preview tool.
   island rather than tiling forever. Each tile's elevation/moisture sample is classified into
   both the gameplay-authoritative `Terrain` (`{ Field, Mountain, Water, Empty }`, via
   `SEA_LEVEL`/`MOUNTAIN_LEVEL` thresholds) and the cosmetic `TerrainType`
-  (`shared/src/components/terrain_type.rs` — the elevation/moisture biome table from Amit
+  (`shared/src/game/map/terrain.rs` — the elevation/moisture biome table from Amit
   Patel's polygon map generation article), bundled together as `TileData`. `Terrain::Empty` is
   not produced by this table — it's reserved for the neutral wilderness gaps `biomes.rs` (below)
   will carve out.

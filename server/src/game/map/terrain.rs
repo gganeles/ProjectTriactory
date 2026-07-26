@@ -6,12 +6,11 @@
 //! the two always agree (see [`TileData`]'s docs).
 //!
 //! The elevation-noise-minus-radial-distance island trick and the biome table itself are from
-//! Amit Patel's polygon map generation article — see `shared/src/components/terrain_type.rs`.
+//! Amit Patel's polygon map generation article — see `shared/src/game/map/terrain.rs`.
 
 use noise::{Fbm, NoiseFn, Perlin};
 use std::collections::HashMap;
-use triactory_shared::components::terrain_type::{MOUNTAIN_LEVEL, SEA_LEVEL, TerrainType};
-use triactory_shared::components::tile::{Terrain, TileData};
+use triactory_shared::game::map::terrain::{MOUNTAIN_LEVEL, SEA_LEVEL, Terrain, TerrainType, TileData};
 use triactory_shared::grid::TriCoord;
 
 /// World-space edge length tiles are generated at. Only used as a coordinate scale for noise

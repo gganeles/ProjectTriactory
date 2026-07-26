@@ -1,5 +1,5 @@
-pub mod components;
 pub mod config;
+pub mod game;
 pub mod grid;
 pub mod protocol;
 pub mod states;
@@ -10,9 +10,9 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
 /// Configuration added by **both** the server and client apps: registers [`AppState`] /
-/// [`GameMode`] and the Lightyear wire contract (`protocol::ProtocolPlugin`). Must be added
-/// after `ClientPlugins`/`ServerPlugins` in each app's `main.rs` — see `protocol/mod.rs`. Will
-/// grow to include shared simulation systems (see `shared/src/README.md`).
+/// [`GameMode`], the Lightyear wire contract (`protocol::ProtocolPlugin`), and the shared
+/// game domain (`game::GamePlugin`). Must be added after `ClientPlugins`/`ServerPlugins` in
+/// each app's `main.rs`.
 pub struct SharedPlugin;
 
 impl Plugin for SharedPlugin {
@@ -22,5 +22,6 @@ impl Plugin for SharedPlugin {
         }
         app.init_state::<AppState>().add_sub_state::<GameMode>();
         app.add_plugins(protocol::ProtocolPlugin);
+        app.add_plugins(game::GamePlugin);
     }
 }

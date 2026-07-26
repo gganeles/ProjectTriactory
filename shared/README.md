@@ -3,25 +3,29 @@
 The Lightyear **protocol crate**: everything the client and server must agree on byte-for-byte.
 Both apps depend on it; neither may duplicate anything defined here.
 
+Reorganized (see `restructure` in git history) from an earlier flat `components/` / `data/` /
+`systems/` layout into domain folders under `game/` — each domain owns its own component
+definitions, static data, and (eventually) systems together, instead of splitting them across
+three parallel trees that all had to be kept in sync by hand.
+
 ## What lives here
 
 - **Grid math** ([src/grid/](src/grid/)) — triangle coordinates, neighbors, distance, biome
   shape, pathfinding.
 - **Protocol registration** ([src/protocol/](src/protocol/)) — one `ProtocolPlugin` that
   registers every component, message, channel, and input on both sides in identical order.
-- **Component definitions** ([src/components/](src/components/)) — the plain data structs.
-- **Static game data** ([src/data/](src/data/)) — resource kinds, ARP recipes, the development
-  tree DAG, biome level tables.
-- **Shared simulation systems** ([src/systems/](src/systems/)) — the deterministic systems
-  that run on the server *and* on the client during prediction rollback.
+- **Game domain** ([src/game/](src/game/)) — `map/` (terrain, biome territory, combat,
+  production), `player/` (economy, tech, vision, input), `entities/` (projectiles). Each leaf
+  module owns its own component definitions (`mod.rs`) and static/tunable data (`data.rs`)
+  together, registered via that domain's `Plugin`.
 
-Planned top-level files:
+Top-level files:
 
-- `src/lib.rs` — public modules + `SharedPlugin` (fixed timestep config, protocol, shared systems).
-- `src/config.rs` — tuning constants: `TICK_RATE = 30 Hz`, `OCCUPY_SECS = 3.0`, `BA_RANGE = 2`,
-  `VISION_RANGE = 2`, `LEADER_DEFENSE_MULT = 1.5`, `TERRAIN_BOOST = 1.5`, `SERVER_PORT`,
-  `PROTOCOL_ID`. Every `(?)` value from the mechanics doc lives here so it can be tuned
-  without touching logic.
+- `src/lib.rs` — public modules + `SharedPlugin` (state registration, protocol, `game::GamePlugin`).
+- `src/config.rs` — tuning constants: `TICK_RATE_HZ`, `DEFAULT_EDGE_TILES`, `PROTOCOL_ID`,
+  `SERVER_PORT`, `DEV_SERVER_ADDR`. Occupation seconds, BA/vision ranges, and multipliers from
+  the mechanics doc are still `(?)` placeholders, not yet added.
+- `src/states.rs` — `AppState { MainMenu, Game }` and `GameMode { BuildMode, PlayMode }`.
 
 ## Design rules
 
@@ -30,9 +34,12 @@ Planned top-level files:
 - If a system touches a Predicted component, it belongs here. If not, it belongs in `server/`.
 - This crate has **no rendering, no netcode transport, no I/O** — it must compile for the
   headless server, the desktop client, and mobile targets alike.
+- Components are dumb data: no methods with game logic beyond trivial accessors/invariants.
+- Anything replicated must stay `serde`-serializable and cheap to diff.
 
 ## Testing
 
 This crate carries the bulk of the pure unit tests: grid properties (neighbor symmetry,
-distance == BFS edge count, biome shape invariants, world↔coord round-trips), recipe math,
-dev-tree DAG acyclicity, level-table monotonicity, capacity clamping.
+distance == BFS edge count, biome shape invariants, world↔coord round-trips), terrain
+classification boundaries, recipe math, dev-tree DAG acyclicity, level-table monotonicity,
+capacity clamping.
