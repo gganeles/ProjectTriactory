@@ -16,14 +16,16 @@ pub enum Terrain {
 }
 
 /// Everything generated for one map tile: the coarse, gameplay-authoritative [`Terrain`]
-/// (movement/skill gating) plus the finer-grained [`TerrainType`] used only for biome coloring.
-/// Both are derived from the same elevation/moisture sample during generation (see
-/// `server/src/game/map/terrain.rs`), so they always agree (e.g. `Terrain::Water` tiles are
-/// always `TerrainType::Ocean`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// (movement/skill gating) plus the finer-grained [`TerrainType`] used only for biome coloring,
+/// plus the raw `elevation` sample (`[0.0, 1.0]`) both were classified from. `elevation` isn't
+/// used for gameplay — only for lifting tiles to height in the client's renderer — but it's
+/// stored here rather than recomputed so client and server always agree on it (see
+/// `server/src/game/map/terrain.rs`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct TileData {
     pub terrain: Terrain,
     pub terrain_type: TerrainType,
+    pub elevation: f32,
 }
 
 /// Fine-grained biome classification, purely for rendering variety — not to be confused with

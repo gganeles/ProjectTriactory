@@ -68,6 +68,7 @@ pub fn generate(coords: &[TriCoord], seed: u32) -> HashMap<TriCoord, TileData> {
                 TileData {
                     terrain,
                     terrain_type,
+                    elevation,
                 },
             )
         })
