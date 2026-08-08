@@ -38,7 +38,7 @@ neighbors, rotation, and distance trivial with no up/down case explosion.
   triangles sharing at least one vertex with the Biome Tower tile*: BT + 3 edge neighbors +
   9 vertex-only neighbors. Precomputed as `BIOME_OFFSETS: [(i32,i32,i32); 13]` relative to an
   upward BT. **Convention: all Biome Tower tiles are upward triangles** (avoids a mirrored
-  offset table). Also the biome anchor super-lattice used by map generation.
+  offset table).
 - `path.rs` — A* over tiles honoring `Terrain` and the player's unlocked skills (water and
   mountain tiles are impassable without the matching skill). Used by the client for
   tap-to-move and by the server to validate movement.

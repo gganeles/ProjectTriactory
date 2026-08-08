@@ -17,7 +17,11 @@ Everything drawn to the screen except UI widgets. 2D orthographic, budgeted for 
   `input::zoom` read to keep the camera from drifting/zooming arbitrarily far from the board;
   removed again on `AppState::Game` exit. Will be replaced by the real, chunked-mesh pipeline
   below (the per-biome coloring here is the interim substitute for the `terrain.rs` texture atlas
-  planned there).
+  planned there). Also renders a "BT"/"BT&lt;slot&gt;" label over every Biome Town, from the
+  replicated `world_model::BiomeTowers` — an egui screen-space overlay reprojected every frame
+  via `Camera::world_to_viewport`, since there's no world-space text rendering (`Text2d`) set up
+  alongside the map's `Camera3d`, and it's the simplest option given the camera only pans/zooms
+  during `AppState::Game`, never rotates.
 
 ## Planned files
 

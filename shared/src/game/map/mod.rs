@@ -1,5 +1,6 @@
 pub mod biome;
 pub mod combat;
+pub mod generation;
 pub mod production;
 pub mod terrain;
 

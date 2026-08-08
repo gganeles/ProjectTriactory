@@ -38,21 +38,41 @@ pub struct TileData {
 /// generation article
 /// (<http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/>,
 /// `getBiome`/`displayColors` in the reference `mapgen2` source); pared down to 4 elevation
-/// bands (`Ocean`/`Beach`/`Tundra`/`Snow`) for a simpler look. Re-adding the dropped
-/// moisture-driven variants (forest/desert/grassland/...) is just restoring the removed
-/// branches in `classify`/`color`/the `every_variant_has_a_distinct_color` test below — see
-/// git history on this file for the full table.
+/// bands (`Ocean`/`Sand`/`Tundra`/`Snow`) for a simpler look, then widened back out to 6 land
+/// variants (`Sand`/`Snow`/`Tundra`/`Forest`/`Plains`/`Highlands`) so every one of
+/// `MAX_PLAYERS` (6) players can get a visually distinct territory color — see
+/// `server/src/game/map/mod.rs`'s `TileMap::generate`, which assigns one land variant per
+/// `PlayerSlot` and overwrites every owned tile's `terrain_type` with it. `classify` (below)
+/// still only ever produces the elevation-driven raw value (used for `Ocean`, and as the
+/// pre-ownership-overwrite placeholder for land) — the land-variant-per-player mapping is
+/// deliberately not encoded here, so this type stays a pure "what does this look like" table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TerrainType {
     Ocean,
-    Beach,
+    Sand,
     Snow,
     Tundra,
+    Forest,
+    Plains,
+    Highlands,
 }
+
+/// Every land `TerrainType` variant, in a fixed order — the pool `TileMap::generate` shuffles
+/// (seeded) and takes `num_players` from to assign one distinct type per `PlayerSlot`. Order here
+/// doesn't matter for correctness (the shuffle randomizes it), only completeness: this must list
+/// every non-`Ocean` variant exactly once.
+pub const LAND_TERRAIN_TYPES: [TerrainType; 6] = [
+    TerrainType::Sand,
+    TerrainType::Snow,
+    TerrainType::Tundra,
+    TerrainType::Forest,
+    TerrainType::Plains,
+    TerrainType::Highlands,
+];
 
 /// Elevation below this is `Ocean`.
 pub const SEA_LEVEL: f32 = 0.1;
-/// Elevation in `[SEA_LEVEL, BEACH_LEVEL)` is `Beach`.
+/// Elevation in `[SEA_LEVEL, BEACH_LEVEL)` is `Sand`.
 pub const BEACH_LEVEL: f32 = 0.14;
 /// Elevation above this is `Snow` (mountain peaks); everything between `BEACH_LEVEL` and this
 /// is `Tundra`.
@@ -61,12 +81,14 @@ pub const MOUNTAIN_LEVEL: f32 = 0.8;
 impl TerrainType {
     /// Classifies a tile from its elevation, expected in `[0.0, 1.0]`. `moisture` (also
     /// `[0.0, 1.0]`) is accepted but currently unused — kept in the signature so callers don't
-    /// need to change if a future biome split reintroduces it (see the type's docs).
+    /// need to change if a future biome split reintroduces it (see the type's docs). Only ever
+    /// produces `Ocean`/`Sand`/`Snow`/`Tundra` — `Forest`/`Plains`/`Highlands` are assigned only
+    /// via `TileMap::generate`'s per-player overwrite, never by elevation alone.
     pub fn classify(elevation: f32, _moisture: f32) -> Self {
         if elevation < SEA_LEVEL {
             Self::Ocean
         } else if elevation < BEACH_LEVEL {
-            Self::Beach
+            Self::Sand
         } else if elevation > MOUNTAIN_LEVEL {
             Self::Snow
         } else {
@@ -74,14 +96,18 @@ impl TerrainType {
         }
     }
 
-    /// The biome's display color. `Ocean`/`Beach`/`Snow`/`Tundra` values are ported verbatim
-    /// from `mapgen2`'s `displayColors` table (see the type's docs).
+    /// The biome's display color. `Ocean`/`Sand`/`Snow`/`Tundra` values are ported verbatim from
+    /// `mapgen2`'s `displayColors` table (see the type's docs); `Forest`/`Plains`/`Highlands` are
+    /// new, chosen only to be visually distinct from the rest.
     pub fn color(&self) -> Color {
         let (r, g, b) = match self {
             Self::Ocean => (0x44, 0x44, 0x7a),
-            Self::Beach => (0xa0, 0x90, 0x77),
+            Self::Sand => (0xa0, 0x90, 0x77),
             Self::Snow => (0xff, 0xff, 0xff),
             Self::Tundra => (0xbb, 0xbb, 0xaa),
+            Self::Forest => (0x2f, 0x5d, 0x2a),
+            Self::Plains => (0x9a, 0xc4, 0x5c),
+            Self::Highlands => (0x8a, 0x7f, 0x6b),
         };
         Color::srgb_u8(r, g, b)
     }
@@ -102,8 +128,8 @@ mod tests {
 
     #[test]
     fn beach_band_is_thin_and_dry_land_starts_after_it() {
-        assert_eq!(TerrainType::classify(SEA_LEVEL, 0.5), TerrainType::Beach);
-        assert_ne!(TerrainType::classify(BEACH_LEVEL, 0.5), TerrainType::Beach);
+        assert_eq!(TerrainType::classify(SEA_LEVEL, 0.5), TerrainType::Sand);
+        assert_ne!(TerrainType::classify(BEACH_LEVEL, 0.5), TerrainType::Sand);
         assert_ne!(TerrainType::classify(BEACH_LEVEL, 0.5), TerrainType::Ocean);
     }
 
@@ -126,9 +152,12 @@ mod tests {
     fn every_variant_has_a_distinct_color() {
         let variants = [
             TerrainType::Ocean,
-            TerrainType::Beach,
+            TerrainType::Sand,
             TerrainType::Snow,
             TerrainType::Tundra,
+            TerrainType::Forest,
+            TerrainType::Plains,
+            TerrainType::Highlands,
         ];
         let mut colors: Vec<[u8; 3]> = variants
             .iter()

@@ -16,14 +16,15 @@ use std::collections::HashMap;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::PrimitiveTopology;
 use bevy::prelude::*;
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 use triactory_shared::{
     AppState,
-    game::map::terrain::{TerrainType, TileData},
+    game::map::terrain::{SEA_LEVEL, TerrainType, TileData},
     grid::TriCoord,
 };
 
 use super::camera::MainCamera;
-use crate::world_model::RevealedTiles;
+use crate::world_model::{BiomeTowers, RevealedTiles};
 
 pub struct HexMapPlugin;
 
@@ -31,7 +32,14 @@ impl Plugin for HexMapPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            spawn_hex_map_when_ready.run_if(in_state(AppState::Game)),
+            (spawn_hex_map_when_ready, spawn_biome_tower_labels_when_ready)
+                .run_if(in_state(AppState::Game)),
+        )
+        .add_systems(
+            EguiPrimaryContextPass,
+            draw_biome_tower_labels
+                .run_if(in_state(AppState::Game))
+                .run_if(resource_exists::<BiomeTowerLabels>),
         )
         .add_systems(OnExit(AppState::Game), despawn_hex_map);
     }
@@ -55,6 +63,22 @@ pub struct MapBounds {
     pub camera_home_xz: Vec2,
 }
 
+/// World-space anchor + text for every Biome Town's "BT"/"BT<slot>" label (see
+/// [`spawn_biome_tower_labels_when_ready`]), drawn each frame by [`draw_biome_tower_labels`] via
+/// an egui screen-space overlay — there's no world-space text rendering in this codebase (no
+/// `Camera2d`/`Text2d` alongside the map's `Camera3d`), and the camera only pans/zooms (never
+/// rotates) during `AppState::Game`, so re-projecting through `Camera::world_to_viewport` every
+/// frame is simpler than maintaining a billboard mesh.
+#[derive(Resource)]
+struct BiomeTowerLabels {
+    /// (world position, label text) pairs, one per placed Biome Town.
+    entries: Vec<(Vec3, String)>,
+}
+
+/// Small vertical offset so labels float just above the tile surface instead of clipping into
+/// it.
+const LABEL_HEIGHT_OFFSET: f32 = 0.15;
+
 const EDGE_LEN: f32 = 1.0;
 
 /// World-space height per unit of `elevation` (`[0.0, 1.0]`, see `TileData`). Tuned so mountain
@@ -67,6 +91,16 @@ const HEIGHT_SCALE: f32 = 0.5;
 /// low-elevation ocean, whose height is barely above 0 — so the map just fades into the
 /// background plane instead of reading as a distinct 3D object.
 const SKIRT_BASE_HEIGHT: f32 = -1.0;
+
+/// Fixed world height every corner on the map's outer boundary is flattened to (see
+/// [`spawn_hex_map_when_ready`]), instead of its elevation-averaged [`vertex_heights`] value.
+/// Elevation is noisy per-tile, so left alone the boundary ring's rim height zigzags all the way
+/// around the map — barely noticeable from most angles, but the fixed camera/light angle used
+/// here happens to expose it clearly on the far/lit sides. Flattening just the boundary corners
+/// keeps the interior sloped naturally while making the silhouette a clean straight hexagon from
+/// every angle. `SEA_LEVEL` (rather than 0) keeps the rim roughly level with typical coastline
+/// height instead of sinking to the map's absolute floor.
+const BOUNDARY_RIM_HEIGHT: f32 = SEA_LEVEL * HEIGHT_SCALE;
 
 /// Quantizes a corner position into a hashable key so triangles that share a corner (in exact
 /// world space, since `corners_world` is deterministic) agree on which [`vertex_heights`] entry
@@ -185,7 +219,33 @@ fn spawn_hex_map_when_ready(
         return;
     }
     let tiles: Vec<TriCoord> = revealed.tiles.keys().copied().collect();
-    let heights = vertex_heights(&tiles, &revealed);
+    let mut heights = vertex_heights(&tiles, &revealed);
+
+    // Every tile's per-edge boundary flags, computed once so the corner-flattening pass below
+    // and the mesh-building loop further down (which needs the same flags for its skirt wall)
+    // agree and don't redo the neighbor lookup twice.
+    let edge_is_boundary: HashMap<TriCoord, [bool; 3]> = tiles
+        .iter()
+        .map(|&tile| {
+            let corners = tile.corners_world(EDGE_LEN);
+            (tile, tile_edge_is_boundary(tile, corners, &revealed.tiles))
+        })
+        .collect();
+
+    // Flatten every corner on the map's outer boundary to one fixed height (see
+    // `BOUNDARY_RIM_HEIGHT`'s docs) — interior corners keep their elevation-averaged height, so
+    // only the map's silhouette is affected, not its interior slope.
+    for &tile in &tiles {
+        let corners = tile.corners_world(EDGE_LEN);
+        for (i, &is_boundary) in edge_is_boundary[&tile].iter().enumerate() {
+            if !is_boundary {
+                continue;
+            }
+            let j = (i + 1) % 3;
+            heights.insert(corner_key(corners[i]), BOUNDARY_RIM_HEIGHT);
+            heights.insert(corner_key(corners[j]), BOUNDARY_RIM_HEIGHT);
+        }
+    }
 
     // One material per biome, built lazily so unused `TerrainType`s never allocate a handle.
     let mut biome_materials: HashMap<TerrainType, Handle<StandardMaterial>> = HashMap::new();
@@ -205,13 +265,22 @@ fn spawn_hex_map_when_ready(
                 let corners = tile.corners_world(EDGE_LEN);
                 let top_heights = corners.map(|c| heights[&corner_key(c)]);
                 let terrain_type = revealed.tiles[tile].terrain_type;
-                let edge_is_boundary = tile_edge_is_boundary(*tile, corners, &revealed.tiles);
                 let material = biome_materials
                     .entry(terrain_type)
-                    .or_insert_with(|| materials.add(StandardMaterial::from(terrain_type.color())))
+                    .or_insert_with(|| {
+                        materials.add(StandardMaterial {
+                            // Tiles are lifted per-vertex for the 2.5D relief look, so PBR
+                            // lighting would otherwise shade each triangle by its own slope —
+                            // same terrain type, visibly different shades. Unlit keeps the
+                            // flat, solid per-type color the art style requires regardless of
+                            // slope or light angle.
+                            unlit: true,
+                            ..StandardMaterial::from(terrain_type.color())
+                        })
+                    })
                     .clone();
                 parent.spawn((
-                    Mesh3d(meshes.add(build_tile_mesh(corners, top_heights, edge_is_boundary))),
+                    Mesh3d(meshes.add(build_tile_mesh(corners, top_heights, edge_is_boundary[tile]))),
                     MeshMaterial3d(material),
                 ));
             }
@@ -243,11 +312,76 @@ fn spawn_hex_map_when_ready(
     });
 }
 
+/// Computes every Biome Town's label once `RevealedTiles` and `BiomeTowers` have both arrived
+/// (they're sent as two separate messages — see `send_map_state` — so they can land a frame or
+/// two apart). Independent of [`spawn_hex_map_when_ready`]'s own readiness check so neither
+/// system's data blocks the other's.
+fn spawn_biome_tower_labels_when_ready(
+    mut commands: Commands,
+    revealed: Res<RevealedTiles>,
+    towers: Res<BiomeTowers>,
+    existing: Option<Res<BiomeTowerLabels>>,
+) {
+    if existing.is_some() || revealed.tiles.is_empty() || towers.towns.is_empty() {
+        return;
+    }
+
+    let starting_slot: HashMap<TriCoord, usize> = towers
+        .starting_towers
+        .iter()
+        .enumerate()
+        .map(|(slot, &tile)| (tile, slot))
+        .collect();
+
+    let entries = towers
+        .towns
+        .iter()
+        .filter_map(|town| {
+            let elevation = revealed.tiles.get(town)?.elevation;
+            let height = elevation * HEIGHT_SCALE + LABEL_HEIGHT_OFFSET;
+            let pos = to_world_3d(town.center_world(EDGE_LEN), height);
+            let text = match starting_slot.get(town) {
+                Some(slot) => format!("BT{slot}"),
+                None => "BT".to_string(),
+            };
+            Some((pos, text))
+        })
+        .collect();
+
+    commands.insert_resource(BiomeTowerLabels { entries });
+}
+
+/// Draws each label from [`BiomeTowerLabels`] at its Biome Town's current screen position, via
+/// `Camera::world_to_viewport` — see [`BiomeTowerLabels`]'s docs for why this is a per-frame
+/// egui overlay rather than world-space geometry.
+fn draw_biome_tower_labels(
+    mut contexts: EguiContexts,
+    labels: Res<BiomeTowerLabels>,
+    camera: Single<(&Camera, &GlobalTransform), With<MainCamera>>,
+) -> Result {
+    let ctx = contexts.ctx_mut()?;
+    let (camera, camera_transform) = *camera;
+    let painter = ctx.debug_painter();
+    for (pos, text) in &labels.entries {
+        if let Ok(screen_pos) = camera.world_to_viewport(camera_transform, *pos) {
+            painter.text(
+                egui::pos2(screen_pos.x, screen_pos.y),
+                egui::Align2::CENTER_CENTER,
+                text,
+                egui::FontId::proportional(16.0),
+                egui::Color32::WHITE,
+            );
+        }
+    }
+    Ok(())
+}
+
 fn despawn_hex_map(mut commands: Commands, roots: Query<Entity, With<HexMapScene>>) {
     for root in &roots {
         commands.entity(root).despawn();
     }
     commands.remove_resource::<MapBounds>();
+    commands.remove_resource::<BiomeTowerLabels>();
 }
 
 /// Places a `center_world`/`corners_world` 2D point into the Y-up 3D scene, at world height

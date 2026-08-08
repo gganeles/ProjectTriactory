@@ -8,3 +8,5 @@ lightyear = { version = "0.28.0", features = ["netcode", "udp"] }
 triactory_shared = { path = "shared" }
 bevy_egui = "0.41.1"
 noise = "0.9.0"
+rand = "0.9"
+rand_chacha = "0.9"

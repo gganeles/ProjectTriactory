@@ -8,3 +8,5 @@ bevy = { workspace = true }
 lightyear = { workspace = true }
 triactory_shared = { workspace = true }
 noise = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }

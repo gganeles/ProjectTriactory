@@ -8,14 +8,18 @@ before any `Client`/`Server` entity is spawned — both apps' `main.rs` enforce 
 ## Files
 
 - `mod.rs` — `ProtocolPlugin`, currently registering just the map: `MapChannel` (reliable
-  ordered) and the `TilesRevealed(Vec<(TriCoord, TileData)>)` message, server→client only. There's
-  no fog of war yet, so today it's always the whole map sent once right after connecting (see
-  `server/src/replication.rs`), not a fog-driven reveal batch — it has the same name as the
-  message planned below since it'll grow into that. Everything else planned for this file
-  (replicated components, gameplay messages/channels, native inputs) will split out into
-  `components.rs` / `messages.rs` / `channels.rs` / `inputs.rs` as those get implemented.
-  Also carries a DEBUG `RegenerateMap` client→server message (backs the debug "Back to menu"
-  button — see its doc comment in `mod.rs` for how to strip it), which is why `MapChannel` is
+  ordered), the `TilesRevealed(Vec<(TriCoord, TileData)>)` message, and the
+  `BiomeTowersRevealed { towns, starting_towers }` message (Biome Town placement + which ones are
+  a player's starting town, driving the client's "BT"/"BT&lt;slot&gt;" labels — see
+  `client/src/rendering/hex_map.rs`), both server→client only. There's no fog of war yet, so
+  today both are always the whole map sent once right after connecting (see
+  `server/src/replication.rs`'s `send_map_state`), not a fog-driven reveal batch —
+  `TilesRevealed` has the same name as the message planned below since it'll grow into that.
+  Everything else planned for this file (replicated components, gameplay messages/channels,
+  native inputs) will split out into `components.rs` / `messages.rs` / `channels.rs` /
+  `inputs.rs` as those get implemented. Also carries DEBUG `RegenerateMap` and `SetMapConfig`
+  client→server messages (back the debug "Back to menu" button and map-settings picker — see
+  their doc comments in `mod.rs` for how to strip them), which is why `MapChannel` is
   `Bidirectional` rather than `ServerToClient` for now.
 
 ## Planned files

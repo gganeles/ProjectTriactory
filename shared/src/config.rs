@@ -6,6 +6,11 @@ use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 /// choose a map size.
 pub const DEFAULT_EDGE_TILES: i32 = 31;
 
+/// Minimum/maximum players a match supports. A real lobby will enforce this before match start;
+/// map generation (`server/src/game/map`) re-validates it defensively.
+pub const MIN_PLAYERS: u8 = 2;
+pub const MAX_PLAYERS: u8 = 6;
+
 /// Fixed-timestep simulation rate shared by both apps (see the root README's locked decisions).
 pub const TICK_RATE_HZ: f64 = 30.0;
 

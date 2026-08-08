@@ -36,6 +36,8 @@ fn main() {
         .add_systems(OnEnter(AppState::Game), game::map::generate_map_on_enter)
         // DEBUG, easy to remove — see server/src/replication.rs's regenerate_map_on_request docs.
         .add_systems(Update, replication::regenerate_map_on_request)
+        // DEBUG, easy to remove — see server/src/replication.rs's set_map_config_on_request docs.
+        .add_systems(Update, replication::set_map_config_on_request)
         .add_observer(replication::send_map_on_connect)
         .run();
 }
